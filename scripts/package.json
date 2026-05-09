@@ -1,0 +1,25 @@
+{
+  "name": "sol-base-ntt-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "transfer:sol-to-base": "tsx solana-to-base.ts",
+    "transfer:base-to-sol": "tsx base-to-solana.ts",
+    "status": "tsx status.ts"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.95.4",
+    "@solana/spl-token": "^0.4.9",
+    "@wormhole-foundation/sdk": "^1.10.0",
+    "@wormhole-foundation/sdk-definitions-ntt": "^3.0.0",
+    "@wormhole-foundation/sdk-evm-ntt": "^3.0.0",
+    "@wormhole-foundation/sdk-solana-ntt": "^3.0.0",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

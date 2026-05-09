@@ -1,0 +1,41 @@
+{
+  "network": "Testnet",
+  "chains": {
+    "Solana": {
+      "version": "3.0.0",
+      "mode": "locking",
+      "paused": false,
+      "owner": "HqE6fC9fRjHGxeBo1mMwkrj5m7N3FbMcGQSCPmrHbYkC",
+      "manager": "",
+      "token": "hjZdvydbsd9QLt6txnsmTmQ2i1FyBLLbaUaj55fmMGG",
+      "transceivers": {
+        "threshold": 1,
+        "wormhole": { "address": "" }
+      },
+      "limits": {
+        "outbound": "1000000.000000000",
+        "inbound": {
+          "Sepolia": "1000000.000000000"
+        }
+      }
+    },
+    "Sepolia": {
+      "version": "1.1.0",
+      "mode": "burning",
+      "paused": false,
+      "owner": "0x38956d5e133086341157231c6D3c1b7F9Dd5d6e0",
+      "manager": "",
+      "token": "0xBfd5125BED3f92e8a1Ea7f6c126F26094ad023c8",
+      "transceivers": {
+        "threshold": 1,
+        "wormhole": { "address": "" }
+      },
+      "limits": {
+        "outbound": "1000000.000000000",
+        "inbound": {
+          "Solana": "1000000.000000000"
+        }
+      }
+    }
+  }
+}

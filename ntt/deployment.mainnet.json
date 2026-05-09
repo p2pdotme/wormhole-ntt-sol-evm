@@ -1,0 +1,41 @@
+{
+  "network": "Mainnet",
+  "chains": {
+    "Solana": {
+      "version": "3.0.0",
+      "mode": "locking",
+      "paused": false,
+      "owner": "REPLACE_WITH_SOLANA_MULTISIG_PUBKEY",
+      "manager": "",
+      "token": "P2PXup1ZvMpCDkJn3PQxtBYgxeCSfH39SFeurGSmeta",
+      "transceivers": {
+        "threshold": 1,
+        "wormhole": { "address": "" }
+      },
+      "limits": {
+        "outbound": "100000.000000",
+        "inbound": {
+          "Base": "100000.000000"
+        }
+      }
+    },
+    "Base": {
+      "version": "1.1.0",
+      "mode": "burning",
+      "paused": false,
+      "owner": "REPLACE_WITH_BASE_MULTISIG_ADDRESS",
+      "manager": "",
+      "token": "REPLACE_WITH_GOVERNANCENTTTOKEN_MAINNET_ADDRESS",
+      "transceivers": {
+        "threshold": 1,
+        "wormhole": { "address": "" }
+      },
+      "limits": {
+        "outbound": "100000.000000",
+        "inbound": {
+          "Solana": "100000.000000"
+        }
+      }
+    }
+  }
+}
