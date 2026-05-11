@@ -56,21 +56,43 @@ Open a session and export these once. **Treat secrets carefully — never commit
 export PATH="$HOME/.bun/bin:$PATH"
 
 # RPC endpoints
-export BASE_RPC="https://base-mainnet.g.alchemy.com/v2/<YOUR_KEY>"
-export SOLANA_RPC="https://<paid-mainnet-rpc>"
+export BASE_RPC="https://mainnet.base.org"                              # or Alchemy/QuickNode URL
+export SOLANA_RPC="https://solana-mainnet.g.alchemy.com/v2/<YOUR_KEY>"  # premium recommended
 export WORMHOLESCAN_API="https://api.wormholescan.io"
 
-# Deployer credentials
-export ETH_PRIVATE_KEY="0x..."                # Base deployer — will own ERC20 + manager
-export SOLANA_PRIVATE_KEY="<base58-secret>"   # Solana deployer — will own manager
+# Deployer credentials — mnemonic-first (matches scripts/signers.ts + evmSigner.ts)
+# Derivation path m/44'/60'/0'/0/0 must resolve to the deployer EOA below.
+export MNEMONIC_KEY="word word word word word word word word word word word word"
+export WALLET_PASSPHRASE=""                                             # optional BIP-39 passphrase
+export DEPLOYER_EOA="0x42AF7b2453cdbFDf51A1cE4238b514f5128cFBfE"        # = TOKEN_OWNER
+
+# Derived raw private key — needed by tools that don't accept mnemonics
+# (the `ntt` CLI and `cast send` read ETH_PRIVATE_KEY directly).
+export ETH_PRIVATE_KEY=$(node -e "const {HDNodeWallet,Mnemonic}=require('ethers');\
+const m=process.env.MNEMONIC_KEY;const p=process.env.WALLET_PASSPHRASE||undefined;\
+console.log(HDNodeWallet.fromMnemonic(p?Mnemonic.fromPhrase(m,p):Mnemonic.fromPhrase(m),\"m/44'/60'/0'/0/0\").privateKey)")
+
+# Sanity: confirm the derived address matches DEPLOYER_EOA
+test "$(cast wallet address --private-key $ETH_PRIVATE_KEY)" = "$DEPLOYER_EOA" \
+  && echo "✅ mnemonic resolves to $DEPLOYER_EOA" \
+  || { echo "❌ mnemonic does NOT resolve to $DEPLOYER_EOA — abort"; exit 1; }
+
+# Solana deployer (will own the NTT manager initially)
+export SOLANA_PRIVATE_KEY="<base58-secret>"                             # only needed if not using local keypair
+export SOLANA_PAYER_ADDR="HqE6fC9fRjHGxeBo1mMwkrj5m7N3FbMcGQSCPmrHbYkC"
+
 export BASESCAN_API_KEY="<key>"
 
 # Canonical addresses
 export SPL_MINT="P2PXup1ZvMpCDkJn3PQxtBYgxeCSfH39SFeurGSmeta"
+export TOKEN_NAME="P2P Protocol"
+export TOKEN_SYMBOL="P2P"
+export TOKEN_DECIMALS=6
+export TOKEN_OWNER="$DEPLOYER_EOA"
 
-# Multisig targets (fill in before step 8)
-export SAFE_ADDR="0x..."        # Base Safe
-export SQUADS_ADDR="..."        # Solana Squads vault
+# Multisig targets (fill in before step 8; leave blank to defer)
+export SAFE_ADDR=""             # Base Safe
+export SQUADS_ADDR=""           # Solana Squads vault
 
 # Configure Solana CLI for mainnet
 solana config set --url $SOLANA_RPC
@@ -79,9 +101,8 @@ solana config set --url $SOLANA_RPC
 Sanity-check balances:
 
 ```bash
-solana balance                                              # ≥ 4 SOL
-cast balance $(cast wallet address --private-key $ETH_PRIVATE_KEY) --rpc-url $BASE_RPC
-# ≥ 0.05 ETH (50000000000000000 wei)
+solana balance $SOLANA_PAYER_ADDR                            # ≥ 3.6 SOL
+cast balance $DEPLOYER_EOA --rpc-url $BASE_RPC               # ≥ 0.03 ETH (30000000000000000 wei)
 ```
 
 ---
@@ -96,13 +117,22 @@ cd /Users/nedstark/claud-codebase/sol-base-ntt/evm
 forge install                                # if libs not present
 forge build
 
+TOKEN_NAME="$TOKEN_NAME" \
+TOKEN_SYMBOL="$TOKEN_SYMBOL" \
+TOKEN_DECIMALS=$TOKEN_DECIMALS \
+TOKEN_OWNER=$TOKEN_OWNER \
 forge script script/DeployToken.s.sol:DeployToken \
   --rpc-url $BASE_RPC \
-  --private-key $ETH_PRIVATE_KEY \
+  --mnemonics "$MNEMONIC_KEY" \
+  $( [ -n "$WALLET_PASSPHRASE" ] && echo --mnemonic-passphrases "$WALLET_PASSPHRASE" ) \
+  --mnemonic-derivation-paths "m/44'/60'/0'/0/0" \
+  --sender $DEPLOYER_EOA \
   --broadcast --verify \
   --etherscan-api-key $BASESCAN_API_KEY \
   -vvv
 ```
+
+If `WALLET_PASSPHRASE` is empty, drop the `--mnemonic-passphrases` line entirely (the `$( … && echo … )` guard above does this automatically in zsh/bash).
 
 Record the deployed address:
 
@@ -235,11 +265,15 @@ The NTT manager must be the token's `minter` for burning mode to work. The token
 ```bash
 cd /Users/nedstark/claud-codebase/sol-base-ntt/evm
 
+TOKEN_ADDRESS=$TOKEN_BASE \
+NTT_MANAGER_ADDRESS=$MANAGER_BASE \
 forge script script/SetMinter.s.sol:SetMinter \
   --rpc-url $BASE_RPC \
-  --private-key $ETH_PRIVATE_KEY \
-  --broadcast \
-  --sig "run(address,address)" $TOKEN_BASE $MANAGER_BASE
+  --mnemonics "$MNEMONIC_KEY" \
+  $( [ -n "$WALLET_PASSPHRASE" ] && echo --mnemonic-passphrases "$WALLET_PASSPHRASE" ) \
+  --mnemonic-derivation-paths "m/44'/60'/0'/0/0" \
+  --sender $DEPLOYER_EOA \
+  --broadcast
 
 cd ../ntt-mainnet
 ```

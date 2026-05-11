@@ -43,12 +43,12 @@ export const constants = {
     splMint: SPL_MINT_MAINNET,
     wormholeChainId: { solana: 1, base: 30 },
     solana: {
-      rpc: "https://api.mainnet-beta.solana.com",
+      rpc: process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com",
       coreBridge: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
     },
     base: {
       chainId: 8453,
-      rpc: "https://mainnet.base.org",
+      rpc: process.env.BASE_RPC_URL ?? "https://mainnet.base.org",
       coreBridge: "0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6",
     },
   },
@@ -61,12 +61,17 @@ export const constants = {
     // Field is named `base` for shape parity with mainnet; on devnet it is Sepolia.
     wormholeChainId: { solana: 1, base: 10002 }, // 10002 = Ethereum Sepolia
     solana: {
-      rpc: "https://api.devnet.solana.com",
+      rpc:
+        process.env.SOLANA_DEVNET_RPC_URL ??
+        process.env.SOLANA_RPC_URL ??
+        "https://api.devnet.solana.com",
       coreBridge: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
     },
     base: {
       chainId: 11155111, // Ethereum Sepolia
-      rpc: "https://ethereum-sepolia-rpc.publicnode.com",
+      rpc:
+        process.env.SEPOLIA_RPC_URL ??
+        "https://ethereum-sepolia-rpc.publicnode.com",
       coreBridge: "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78",
     },
   },

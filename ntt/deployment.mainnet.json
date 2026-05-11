@@ -5,7 +5,7 @@
       "version": "3.0.0",
       "mode": "locking",
       "paused": false,
-      "owner": "REPLACE_WITH_SOLANA_MULTISIG_PUBKEY",
+      "owner": "HqE6fC9fRjHGxeBo1mMwkrj5m7N3FbMcGQSCPmrHbYkC",
       "manager": "",
       "token": "P2PXup1ZvMpCDkJn3PQxtBYgxeCSfH39SFeurGSmeta",
       "transceivers": {
@@ -13,9 +13,9 @@
         "wormhole": { "address": "" }
       },
       "limits": {
-        "outbound": "100000.000000",
+        "outbound": "1000000.000000",
         "inbound": {
-          "Base": "100000.000000"
+          "Base": "1000000.000000"
         }
       }
     },
@@ -23,17 +23,17 @@
       "version": "1.1.0",
       "mode": "burning",
       "paused": false,
-      "owner": "REPLACE_WITH_BASE_MULTISIG_ADDRESS",
+      "owner": "0x42AF7b2453cdbFDf51A1cE4238b514f5128cFBfE",
       "manager": "",
-      "token": "REPLACE_WITH_GOVERNANCENTTTOKEN_MAINNET_ADDRESS",
+      "token": "REPLACE_WITH_P2PGOV_MAINNET_ADDRESS",
       "transceivers": {
         "threshold": 1,
         "wormhole": { "address": "" }
       },
       "limits": {
-        "outbound": "100000.000000",
+        "outbound": "1000000.000000",
         "inbound": {
-          "Solana": "100000.000000"
+          "Solana": "1000000.000000"
         }
       }
     }

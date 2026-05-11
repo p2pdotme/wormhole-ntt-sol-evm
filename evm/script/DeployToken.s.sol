@@ -7,16 +7,23 @@ import {P2PGov} from "../src/P2PGov.sol";
 /// Deploys ONLY the ERC20. The NttManager + WormholeTransceiver are deployed
 /// separately by `ntt add-chain BaseSepolia --token <thisAddress> --mode burning`.
 /// After NTT deployment, run `setMinter(nttManager)` (see SetMinter.s.sol).
+/// Signer is supplied by forge CLI flags — pick one of:
+///   --mnemonics "$MNEMONIC_KEY" \
+///   --mnemonic-passphrases "$WALLET_PASSPHRASE" \
+///   --mnemonic-derivation-paths "m/44'/60'/0'/0/0"
+/// or
+///   --private-key $PRIVATE_KEY
+/// or
+///   --account <foundry-keystore-name>
 contract DeployToken is Script {
     function run() external {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
         string memory name = vm.envString("TOKEN_NAME");
         string memory symbol = vm.envString("TOKEN_SYMBOL");
         // MUST match the SPL mint decimals on Solana.
         uint8 decimals = uint8(vm.envUint("TOKEN_DECIMALS"));
         address owner = vm.envAddress("TOKEN_OWNER");
 
-        vm.startBroadcast(pk);
+        vm.startBroadcast();
         P2PGov token = new P2PGov(name, symbol, decimals, owner);
         vm.stopBroadcast();
 
