@@ -12,8 +12,8 @@ Wormhole NTT bridge for an existing SPL token on Solana ↔ a governance ERC20 o
 ```
 Solana (mainnet/devnet)          Base mainnet  (or Sepolia for rehearsal)
 ┌──────────────────┐             ┌────────────────────────────┐
-│ SPL mint (yours) │             │ GovernanceNttToken (ERC20  │
-│        ▲         │             │   + Votes + Permit + NTT)  │
+│ SPL mint (yours) │             │ P2PGov (ERC20 + Votes      │
+│        ▲         │             │   + Permit + Burnable + NTT)│
 │        │ lock    │             │        ▲     burn/mint     │
 │  NttManager      │◄── VAA ────►│   NttManager (burning)     │
 │  (locking mode)  │             │   WormholeTransceiver      │
@@ -31,7 +31,7 @@ out; Base mints/burns its representation against that custody.
 ## Layout
 
 ```
-evm/         Foundry project: GovernanceNttToken + deploy/setMinter scripts
+evm/         Foundry project: P2PGov + deploy/setMinter scripts
 ntt/         deployment.json template for the `ntt` CLI
 scripts/     TS transfer + status scripts using @wormhole-foundation/sdk
 ```

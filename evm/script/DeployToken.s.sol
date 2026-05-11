@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {GovernanceNttToken} from "../src/GovernanceNttToken.sol";
+import {P2PGov} from "../src/P2PGov.sol";
 
 /// Deploys ONLY the ERC20. The NttManager + WormholeTransceiver are deployed
 /// separately by `ntt add-chain BaseSepolia --token <thisAddress> --mode burning`.
@@ -17,10 +17,10 @@ contract DeployToken is Script {
         address owner = vm.envAddress("TOKEN_OWNER");
 
         vm.startBroadcast(pk);
-        GovernanceNttToken token = new GovernanceNttToken(name, symbol, decimals, owner);
+        P2PGov token = new P2PGov(name, symbol, decimals, owner);
         vm.stopBroadcast();
 
-        console2.log("GovernanceNttToken deployed at:", address(token));
+        console2.log("P2PGov deployed at:", address(token));
         console2.log("Owner:", owner);
         console2.log("Decimals:", decimals);
         console2.log("");

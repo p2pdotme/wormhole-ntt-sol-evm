@@ -80,7 +80,7 @@ Critical Testnet quirk captured in memory: VAAs published by the Sepolia core br
 - `_outboundLimitParams`, `_inboundLimitParams[chainId]`
 - `_messageAttestations[digest][transceiver]` bitmap
 
-`INttToken` is the integration surface the ERC20 must implement — `mint(address,uint256)`, `burn(uint256)`, `setMinter(address)`. The token in this repo (`GovernanceNttToken`) layers ERC20Votes + ERC20Permit on top, with the manager as the configured `minter`.
+`INttToken` is the integration surface the ERC20 must implement — `mint(address,uint256)`, `burn(uint256)`, `setMinter(address)`. The token in this repo (`P2PGov`) layers ERC20Votes + ERC20Permit on top, with the manager as the configured `minter`.
 
 `WormholeTransceiver` handles `sendMessage`/`receiveMessage` against the Wormhole core bridge and (optionally) integrates with the standard relayer or special relayer for paid execution.
 
@@ -307,5 +307,5 @@ Plus the Sepolia chainId quirk does NOT exist on mainnet — Ethereum is `2` eve
 - SDK low-level example: `ntt-workspace/sdk/examples/src/index.ts`
 - SDK route example: `ntt-workspace/sdk/examples/src/route.ts`
 - Route impl: `ntt-workspace/sdk/route/src/{manual,automatic,tracking,types}.ts`
-- Custom token: `evm/src/GovernanceNttToken.sol`
+- Custom token: `evm/src/P2PGov.sol` (ERC20 + Votes + Permit + Burnable + Ownable2Step + INttToken)
 - Deployment manifest: `ntt-workspace/deployment.json`

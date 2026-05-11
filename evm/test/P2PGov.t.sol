@@ -2,16 +2,16 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {GovernanceNttToken} from "../src/GovernanceNttToken.sol";
+import {P2PGov} from "../src/P2PGov.sol";
 
-contract GovernanceNttTokenTest is Test {
-    GovernanceNttToken token;
+contract P2PGovTest is Test {
+    P2PGov token;
     address owner = address(0xA11CE);
     address manager = address(0xB0B);
     address user = address(0xCAFE);
 
     function setUp() public {
-        token = new GovernanceNttToken("Gov", "GOV", 9, owner);
+        token = new P2PGov("Gov", "GOV", 9, owner);
     }
 
     function test_decimalsMatchSpl() public view {
@@ -29,7 +29,7 @@ contract GovernanceNttTokenTest is Test {
 
     function test_setMinterRejectsZero() public {
         vm.prank(owner);
-        vm.expectRevert(GovernanceNttToken.InvalidMinterZeroAddress.selector);
+        vm.expectRevert(P2PGov.InvalidMinterZeroAddress.selector);
         token.setMinter(address(0));
     }
 
@@ -37,7 +37,7 @@ contract GovernanceNttTokenTest is Test {
         vm.prank(owner);
         token.setMinter(manager);
 
-        vm.expectRevert(abi.encodeWithSelector(GovernanceNttToken.CallerNotMinter.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(P2PGov.CallerNotMinter.selector, user));
         vm.prank(user);
         token.mint(user, 1e9);
 

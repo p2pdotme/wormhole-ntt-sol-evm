@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 
 import { Keypair } from "@solana/web3.js";
-import { Wallet, JsonRpcProvider } from "ethers";
+import { HDNodeWallet, Mnemonic } from "ethers";
 import {
   type ChainContext,
   type Signer,
@@ -21,18 +21,47 @@ function loadSolanaKeypair(): Keypair {
   return Keypair.fromSecretKey(new Uint8Array(secret));
 }
 
+/**
+ * Derive an Ethereum HD wallet from a BIP-39 mnemonic.
+ * Uses the standard Ethereum derivation path m/44'/60'/0'/0/0.
+ * Mirrors deriveSignerFromMnemonic() in contracts-v4/scripts/upgradeDiamondInSingleTx.ts.
+ */
+function deriveEvmPrivateKey(mnemonic: string, passphrase?: string): string {
+  const phrase = passphrase
+    ? Mnemonic.fromPhrase(mnemonic, passphrase)
+    : Mnemonic.fromPhrase(mnemonic);
+  const wallet = HDNodeWallet.fromMnemonic(phrase, "m/44'/60'/0'/0/0");
+  return wallet.privateKey;
+}
+
+/**
+ * Resolve an EVM private key.
+ * Priority: MNEMONIC_KEY (HD-derived) > PRIVATE_KEY (raw hex).
+ * WALLET_PASSPHRASE is optional and only used with MNEMONIC_KEY.
+ */
+function getEvmPrivateKey(): string {
+  const mnemonic = process.env.MNEMONIC_KEY;
+  if (mnemonic) {
+    const passphrase = process.env.WALLET_PASSPHRASE || undefined;
+    return deriveEvmPrivateKey(mnemonic, passphrase);
+  }
+  const pk = process.env.PRIVATE_KEY;
+  if (!pk) {
+    throw new Error(
+      "No EVM key configured: set MNEMONIC_KEY (preferred) or PRIVATE_KEY",
+    );
+  }
+  return pk;
+}
+
 export async function getSigner<C extends Chain>(
   ctx: ChainContext<"Testnet", C>,
 ) {
   const platform = chainToPlatform(ctx.chain);
   if (platform === "Evm") {
-    const pk = process.env.PRIVATE_KEY;
-    if (!pk) throw new Error("PRIVATE_KEY not set");
-    const provider = new JsonRpcProvider(
-      process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org",
-    );
-    const wallet = new Wallet(pk, provider);
+    const pk = getEvmPrivateKey();
     const signer = await evmSigner.getSigner(await ctx.getRpc(), pk);
+    console.info(`🔐 EVM signer: ${signer.address()}`);
     return {
       signer: signer as Signer,
       address: { chain: ctx.chain, address: signer.address() } as ReturnType<
