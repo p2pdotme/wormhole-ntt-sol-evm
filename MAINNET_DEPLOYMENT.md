@@ -30,6 +30,7 @@ End-to-end runbook for promoting the bridge from Testnet to Mainnet. Token: exis
 Before you start, confirm all of these:
 
 - [ ] Testnet bridge worked end-to-end in both directions (Solana devnet ↔ Sepolia) — already done in this repo
+- [x] Base ERC20 `P2PGov` deployed at `0x75a8FF75a4f224947A6315b8dab5D5a81FE2f550` (2026-05-11) — step 1 is verify-only
 - [ ] The existing SPL `P2PXup1ZvMpCDkJn3PQxtBYgxeCSfH39SFeurGSmeta` is the correct canonical token on Solana mainnet
 - [ ] You have control of a Solana keypair with ≥ 4 SOL on mainnet
 - [ ] You have control of a Base address with ≥ 0.05 ETH on mainnet
@@ -56,7 +57,7 @@ Open a session and export these once. **Treat secrets carefully — never commit
 export PATH="$HOME/.bun/bin:$PATH"
 
 # RPC endpoints
-export BASE_RPC="https://mainnet.base.org"                              # or Alchemy/QuickNode URL
+export BASE_RPC_URL="https://mainnet.base.org"                              # or Alchemy/QuickNode URL
 export SOLANA_RPC="https://solana-mainnet.g.alchemy.com/v2/<YOUR_KEY>"  # premium recommended
 export WORMHOLESCAN_API="https://api.wormholescan.io"
 
@@ -102,55 +103,40 @@ Sanity-check balances:
 
 ```bash
 solana balance $SOLANA_PAYER_ADDR                            # ≥ 3.6 SOL
-cast balance $DEPLOYER_EOA --rpc-url $BASE_RPC               # ≥ 0.03 ETH (30000000000000000 wei)
+cast balance $DEPLOYER_EOA --rpc-url $BASE_RPC_URL               # ≥ 0.03 ETH (30000000000000000 wei)
 ```
 
 ---
 
-## Step 1 — Deploy Base ERC20
+## Step 1 — Base ERC20 (already deployed)
 
-Deploy `P2PGov`. The deployer becomes the initial `owner` and `minter` (minter will be reassigned to the NTT manager in step 5).
+**Status: ✅ DONE.** `P2PGov` was deployed to Base mainnet on 2026-05-11 at:
 
-```bash
-cd /Users/nedstark/claud-codebase/sol-base-ntt/evm
-
-forge install                                # if libs not present
-forge build
-
-TOKEN_NAME="$TOKEN_NAME" \
-TOKEN_SYMBOL="$TOKEN_SYMBOL" \
-TOKEN_DECIMALS=$TOKEN_DECIMALS \
-TOKEN_OWNER=$TOKEN_OWNER \
-forge script script/DeployToken.s.sol:DeployToken \
-  --rpc-url $BASE_RPC \
-  --mnemonics "$MNEMONIC_KEY" \
-  $( [ -n "$WALLET_PASSPHRASE" ] && echo --mnemonic-passphrases "$WALLET_PASSPHRASE" ) \
-  --mnemonic-derivation-paths "m/44'/60'/0'/0/0" \
-  --sender $DEPLOYER_EOA \
-  --broadcast --verify \
-  --etherscan-api-key $BASESCAN_API_KEY \
-  -vvv
+```
+0x75a8FF75a4f224947A6315b8dab5D5a81FE2f550
 ```
 
-If `WALLET_PASSPHRASE` is empty, drop the `--mnemonic-passphrases` line entirely (the `$( … && echo … )` guard above does this automatically in zsh/bash).
+Deployer (`$DEPLOYER_EOA = 0x42AF7b2453cdbFDf51A1cE4238b514f5128cFBfE`) is the initial `owner` and `minter`. Minter will be reassigned to the NTT manager in step 5; owner will be transferred to the Safe in step 8.
 
-Record the deployed address:
+Export the address for the rest of this runbook:
 
 ```bash
-export TOKEN_BASE=0x<from-script-output>
+export TOKEN_BASE=0x75a8FF75a4f224947A6315b8dab5D5a81FE2f550
 echo "Base ERC20: $TOKEN_BASE"
 ```
 
-Verify the deploy:
+> Do **not** re-run `DeployToken.s.sol` against mainnet — there is exactly one canonical `P2PGov` deployment and any second deploy would create a competing token that nothing on the Solana side could be peered to. The deploy command is preserved in git history (commit `971618a`) and in `scripts/deploy-token.sh` for reference only.
+
+Verify the existing deploy:
 
 ```bash
-cast call $TOKEN_BASE "name()(string)"        --rpc-url $BASE_RPC
-cast call $TOKEN_BASE "symbol()(string)"      --rpc-url $BASE_RPC
-cast call $TOKEN_BASE "decimals()(uint8)"     --rpc-url $BASE_RPC
-cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC   # should be 0
-cast call $TOKEN_BASE "owner()(address)"      --rpc-url $BASE_RPC
-cast call $TOKEN_BASE "clock()(uint48)"       --rpc-url $BASE_RPC    # block.timestamp for EIP-6372
-cast call $TOKEN_BASE "CLOCK_MODE()(string)"  --rpc-url $BASE_RPC    # "mode=timestamp"
+cast call $TOKEN_BASE "name()(string)"        --rpc-url $BASE_RPC_URL
+cast call $TOKEN_BASE "symbol()(string)"      --rpc-url $BASE_RPC_URL
+cast call $TOKEN_BASE "decimals()(uint8)"     --rpc-url $BASE_RPC_URL
+cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC_URL   # should be 0
+cast call $TOKEN_BASE "owner()(address)"      --rpc-url $BASE_RPC_URL
+cast call $TOKEN_BASE "clock()(uint48)"       --rpc-url $BASE_RPC_URL    # block.timestamp for EIP-6372
+cast call $TOKEN_BASE "CLOCK_MODE()(string)"  --rpc-url $BASE_RPC_URL    # "mode=timestamp"
 ```
 
 Expected: `decimals == 6` (matches SPL), `totalSupply == 0` (mints will come exclusively from the bridge), clock mode = timestamp (required for Base L2 vote checkpoints).
@@ -177,7 +163,7 @@ cat > overrides.json <<EOF
 {
   "chains": {
     "Solana": { "rpc": "$SOLANA_RPC" },
-    "Base":   { "rpc": "$BASE_RPC"   }
+    "Base":   { "rpc": "$BASE_RPC_URL"   }
   }
 }
 EOF
@@ -250,10 +236,10 @@ echo "Base transceiver: $XCVR_BASE"
 Verify on-chain:
 
 ```bash
-cast call $MANAGER_BASE "token()(address)"     --rpc-url $BASE_RPC   # = $TOKEN_BASE
-cast call $MANAGER_BASE "owner()(address)"     --rpc-url $BASE_RPC   # = deployer
-cast call $MANAGER_BASE "chainId()(uint16)"    --rpc-url $BASE_RPC   # = 30 (Base)
-cast call $XCVR_BASE    "nttManager()(address)" --rpc-url $BASE_RPC  # = $MANAGER_BASE
+cast call $MANAGER_BASE "token()(address)"     --rpc-url $BASE_RPC_URL   # = $TOKEN_BASE
+cast call $MANAGER_BASE "owner()(address)"     --rpc-url $BASE_RPC_URL   # = deployer
+cast call $MANAGER_BASE "chainId()(uint16)"    --rpc-url $BASE_RPC_URL   # = 30 (Base)
+cast call $XCVR_BASE    "nttManager()(address)" --rpc-url $BASE_RPC_URL  # = $MANAGER_BASE
 ```
 
 ---
@@ -268,7 +254,7 @@ cd /Users/nedstark/claud-codebase/sol-base-ntt/evm
 TOKEN_ADDRESS=$TOKEN_BASE \
 NTT_MANAGER_ADDRESS=$MANAGER_BASE \
 forge script script/SetMinter.s.sol:SetMinter \
-  --rpc-url $BASE_RPC \
+  --rpc-url $BASE_RPC_URL \
   --mnemonics "$MNEMONIC_KEY" \
   $( [ -n "$WALLET_PASSPHRASE" ] && echo --mnemonic-passphrases "$WALLET_PASSPHRASE" ) \
   --mnemonic-derivation-paths "m/44'/60'/0'/0/0" \
@@ -281,7 +267,7 @@ cd ../ntt-mainnet
 Verify:
 
 ```bash
-cast call $TOKEN_BASE "minter()(address)" --rpc-url $BASE_RPC
+cast call $TOKEN_BASE "minter()(address)" --rpc-url $BASE_RPC_URL
 # MUST equal $MANAGER_BASE
 ```
 
@@ -328,7 +314,7 @@ ntt status --network Mainnet --payer ~/.config/solana/id.json
 # Should print "in sync" or equivalent for both Solana and Base
 
 # Independent on-chain check
-cast call $MANAGER_BASE "getPeer(uint16)((bytes32,uint8))" 1 --rpc-url $BASE_RPC
+cast call $MANAGER_BASE "getPeer(uint16)((bytes32,uint8))" 1 --rpc-url $BASE_RPC_URL
 # returns (solana_manager_program_id_universal, 6)
 
 # Solana peer is a PDA, derived from manager program + ["peer", 30_be]
@@ -380,10 +366,10 @@ ETH_PRIVATE_KEY=$ETH_PRIVATE_KEY ntt manual redeem $(cat /tmp/vaa.hex) \
 Verify:
 
 ```bash
-cast call $TOKEN_BASE "balanceOf(address)(uint256)" $RECIPIENT_BASE --rpc-url $BASE_RPC
+cast call $TOKEN_BASE "balanceOf(address)(uint256)" $RECIPIENT_BASE --rpc-url $BASE_RPC_URL
 # 1000000 (= 1.0 token in 6-decimal raw units)
 
-cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC
+cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC_URL
 # 1000000 — first mint
 ```
 
@@ -424,7 +410,7 @@ Verify:
 spl-token balance $SPL_MINT
 # Should reflect the 0.5 release back to your address
 
-cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC
+cast call $TOKEN_BASE "totalSupply()(uint256)" --rpc-url $BASE_RPC_URL
 # 500000 — burned 0.5
 ```
 
@@ -468,7 +454,7 @@ The ERC20 owner controls `setMinter` (extremely sensitive — can repoint mint r
 
 ```bash
 cast send $TOKEN_BASE "transferOwnership(address)" $SAFE_ADDR \
-  --rpc-url $BASE_RPC --private-key $ETH_PRIVATE_KEY
+  --rpc-url $BASE_RPC_URL --private-key $ETH_PRIVATE_KEY
 ```
 
 Then have the Safe call `acceptOwnership()`:
@@ -482,8 +468,8 @@ cast calldata "acceptOwnership()"
 Verify all three:
 
 ```bash
-cast call $TOKEN_BASE   "owner()(address)" --rpc-url $BASE_RPC          # = $SAFE_ADDR
-cast call $MANAGER_BASE "owner()(address)" --rpc-url $BASE_RPC          # = $SAFE_ADDR
+cast call $TOKEN_BASE   "owner()(address)" --rpc-url $BASE_RPC_URL          # = $SAFE_ADDR
+cast call $MANAGER_BASE "owner()(address)" --rpc-url $BASE_RPC_URL          # = $SAFE_ADDR
 # Solana owner: ntt status shows owner = $SQUADS_ADDR
 ```
 
@@ -558,7 +544,7 @@ Either side can be paused independently. Pausing freezes all transfers and redee
 
 ```bash
 # Base — via the pauser key
-cast send $MANAGER_BASE "pause()" --rpc-url $BASE_RPC --private-key $PAUSER_KEY
+cast send $MANAGER_BASE "pause()" --rpc-url $BASE_RPC_URL --private-key $PAUSER_KEY
 
 # Solana — via the pauser
 SOLANA_PRIVATE_KEY=$PAUSER_SOL ntt pause Solana --network Mainnet --payer ~/.config/solana/id.json
@@ -567,7 +553,7 @@ SOLANA_PRIVATE_KEY=$PAUSER_SOL ntt pause Solana --network Mainnet --payer ~/.con
 Unpause requires the owner (multisig):
 
 ```bash
-cast send $MANAGER_BASE "unpause()" --rpc-url $BASE_RPC --private-key $SAFE_SIGNER   # via Safe
+cast send $MANAGER_BASE "unpause()" --rpc-url $BASE_RPC_URL --private-key $SAFE_SIGNER   # via Safe
 ```
 
 ### Lower rate limits in response to incident
@@ -594,7 +580,7 @@ Approximate one-time costs:
 
 | Item | Chain | Cost |
 |---|---|---|
-| Token deploy | Base | ~0.005 ETH |
+| Token deploy | Base | ~0.005 ETH (already paid on 2026-05-11) |
 | Manager + transceiver deploy (`ntt add-chain Base`) | Base | ~0.015 ETH |
 | `setMinter` | Base | ~0.0002 ETH |
 | Peer registration (`ntt push`) | Base | ~0.001 ETH |
